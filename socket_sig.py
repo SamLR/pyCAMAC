@@ -24,11 +24,12 @@ if __name__ == '__main__':
     sendSock = socket(AF_INET, SOCK_DGRAM)
     sendSock.settimeout(50)
     # in theory this message should send the test LAM command A(0)F(8)
-    # pack this instead
-    msg = ecp_header.getheader() + b"\x81\x00\x01\xFF\x23\x01\x00\x00"
-    # header is always 24 bytes, the message is variable but normally 4 bytes for a single naf()
-    packstr = "I"*24 + "I"*8
-    msg = pack(packstr, msg)
+    #  header(24B) + COR(6B) + naf (0fff ffnn nnna aaas)
+    clearLAM = b"\x25\x12"
+    writeReg = b"\x41\x12"
+    data = b"\x01\x00\x00\x00"
+    msg = ecp_header.getheader() + b"\x80\x01\x00\x00\x00\x00" + clearLAM
+   
     sendSock.sendto(msg, addr) 
     # receiver    
     # wait for a return signal
@@ -36,6 +37,19 @@ if __name__ == '__main__':
     while (not data):
         data, addr = sendSock.recvfrom(buf)
         if data:
+            print ("got back:")
+            print (data)
+            
+    msg = ecp_header.getheader() + b"\x80\x01\x00\x00\x00\x00" + writeReg + data
+
+    sendSock.sendto(msg, addr) 
+    # receiver    
+    # wait for a return signal
+    data = ''
+    while (not data):
+        data, addr = sendSock.recvfrom(buf)
+        if data:
+            print ("got back:")
             print (data)
             
     print("done")
