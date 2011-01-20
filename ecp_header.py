@@ -7,6 +7,7 @@ made S. Cook 18-01-11
 
 from os import getpid     # used to get the pid of this process
 from struct import pack   # imports 'pack' to create byte strings
+# TODO: add COR variable
 
 # convert the PID of this process into an 
 # unsigned short int [2 bytes]
@@ -30,6 +31,15 @@ ecp_header = [ # would be dictionary but order is important
     ['status', b'\x00\x47'],
     ]
     
+    #b"\x80 \x01 \x00\x00 \x00\x00"
+
+ecp_COR = [ # holds a standard COR command for ecc
+    ['modifier', b'\x80'],
+    ['cmd', b'\x01'],
+    ['op_lo', b'\x00\x00'],
+    ['op_hi', b'\x00\x00'],
+    ]
+    
 def getheader():
     """
     Returns the ECC header as a single string
@@ -37,5 +47,27 @@ def getheader():
     res = b''
     for entry in ecp_header:
         res += entry[1]
-    print (res)
     return res
+    
+# TODO: add dictionary options of COR commands
+# TODO: find out what these COR values are actually for!
+def getCOR(): 
+    """
+    returns the ecc COR command
+    """
+    res = b''
+    for entry in ecp_COR:
+        res += entry[1]
+    return res
+
+def gettop():
+    """
+    returns the combined header and COR 
+    """
+    return getCOR() + getheader()
+    
+if __name__ == '__main__':
+    # TODO: change this to only print hex (hexdump?)
+    print("current header is:")
+    print(gettop())
+    print("done")

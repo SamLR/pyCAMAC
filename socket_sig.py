@@ -15,6 +15,12 @@ from struct import pack
 
 if __name__ == '__main__':
     
+    # TODO: Dictionary of commands
+    # TODO: string to hex for decoding return values (hexdump?)
+    # TODO: test with ADC/TDC
+    # TODO: start looking at patterns for cont receive. 
+    # TODO: get hold of numPy etc in order to set up online monitoring 
+    
     host = "192.168.0.2"
     port = 240
     buf = 1024
@@ -28,7 +34,7 @@ if __name__ == '__main__':
     clearLAM = b"\x25\x12"
     writeReg = b"\x41\x12"
     data = b"\x01\x00\x00\x00"
-    msg = ecp_header.getheader() + b"\x80\x01\x00\x00\x00\x00" + clearLAM
+    msg = ecp_header.gettop() + clearLAM
    
     sendSock.sendto(msg, addr) 
     # receiver    
