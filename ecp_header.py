@@ -13,7 +13,8 @@ from struct import pack   # imports 'pack' to create byte strings
 # unsigned short int [2 bytes]
 _ourpid = pack('I', getpid())
 
-
+# format [header component, value]
+# use a list NOT dictionary to maintain sequence, look at possible sequential dictionaries? 
 ecp_header = [ # would be dictionary but order is important
     ['llcDestinationLsap', b'\x60'],
     ['llcSourceLsap', b'\x60'],
@@ -30,11 +31,9 @@ ecp_header = [ # would be dictionary but order is important
     ['flags', b'\x00\x00'],
     ['status', b'\x00\x47'],
     ]
-    
-    #b"\x80 \x01 \x00\x00 \x00\x00"
 
 ecp_COR = [ # holds a standard COR command for ecc
-    ['modifier', b'\x80'],
+    ['modifier', b'\x08'],
     ['cmd', b'\x01'],
     ['op_lo', b'\x00\x00'],
     ['op_hi', b'\x00\x00'],
@@ -64,10 +63,16 @@ def gettop():
     """
     returns the combined header and COR 
     """
-    return getCOR() + getheader()
+    res = getheader() + getCOR()
+    print(res)
+    return res
     
 if __name__ == '__main__':
     # TODO: change this to only print hex (hexdump?)
-    print("current header is:")
+    print("current top is:")
     print(gettop())
+    print("current header is:")
+    print(getheader())
+    print("current COR is:")
+    print(getCOR())
     print("done")

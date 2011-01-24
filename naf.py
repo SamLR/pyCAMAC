@@ -25,6 +25,7 @@ def naf(n, f, a = -1, data = -1 ):
     res =  pack('H',(f << 10 | n << 5 | a << 1 | 0)) + data
     return res
     
+# dictionary format "command name":(command code, [subaddress needed?], [data needed?])
 camacFunction = { # TODO: finish adding function dict
     "readGrp1": (0, "subaddr"),
     "readGrp2": (1, "subaddr"),
@@ -36,7 +37,7 @@ camacFunction = { # TODO: finish adding function dict
     "clrGrp2": (11, "subaddr"),
     "ovrWriteGrp1": (16, "subaddr", "data"),
     "ovrWriteGrp2": (17, "subaddr", "data"),
-    "maskOvrWriteGrp1": (18, "subaddr", "data"),
+    "maskOvrWriteGrp1": (18, "subaddr", "data"), 
     "maskOvrWriteGrp2": (19, "subaddr", "data"),
     "disable": (24,),
     "increment": (25, "subaddr"),
