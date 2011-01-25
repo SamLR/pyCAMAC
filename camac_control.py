@@ -15,12 +15,28 @@ from time import sleep
 
 recvPackStr = ecp_header.headerPackStr + 'B'*3
 
+def recv(sock, addr, verbose=False, returnAddr=False, packStr=recvPackStr):
+    """returns the status as received from the socket, sock at addr. 
+    options: verbose - returns full packed
+             returnAddr - returns the return address
+             packStr - alternate packing string (eg if header)
+    """
+    data = ''
+    while not data:
+        data, rtn_addr = sock.recvfrom(1024)
+        
+    s = unpack(packStr, data)
+    res = s if verbose else (s[-3], s[-2], s[-1])
+    res = (res + rtn_addr) if returnAddr else res
+    return res
+
 def cccc(sock, addr):
     """
     send CAMAC clear to socket, sock, at address addr
     """
     msg = ecp_header.gettop(cmd = 'cmd_clr')
     sock.sendto(msg, addr)
+    return recv(sock, addr)
 
 def cccz(sock, addr):
     """
@@ -28,6 +44,7 @@ def cccz(sock, addr):
     """
     msg = ecp_header.gettop(cmd = 'cmd_init')
     sock.sendto(msg, addr)
+    return recv(sock, addr)
 
 def cccc(sock, addr):
     """
@@ -35,6 +52,7 @@ def cccc(sock, addr):
     """
     msg = ecp_header.gettop(cmd = 'cmd_inhibit')
     sock.sendto(msg, addr)
+    return recv(sock, addr)
 
 def cssa(sock, addr, n, f, a = -1, data = -1, timeout = 1, verbose = False):
     """
@@ -50,10 +68,7 @@ def cssa(sock, addr, n, f, a = -1, data = -1, timeout = 1, verbose = False):
     sock.sendto(msg, addr)
     sock.settimeout(timeout)
     data = ''
-    while not data:
-        data, rtn_addr = sock.recvfrom(1024)
-        s = unpack(recvPackStr, data)
-        return s if verbose else (s[-3], s[-2], s[-1])
+    return recv(sock, addr, verbose)
 
 # TODO maybe move this to a higher level?
 # TODO move all of sock stuff into naf or lower level?
@@ -84,3 +99,7 @@ if __name__ == '__main__':
     # this is the signal timeout, ie how long to keep sending
     # without receiving 
     sendSock.settimeout(10)
+    
+    cccc(sock, addr)
+    cccz(sock, addr)
+    ccci(sock, addr)
