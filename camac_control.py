@@ -1,4 +1,5 @@
 # encoding: utf-8
+# TODO: set up CAMAC & NIM to ensure a signal
 """
 camac_cmds.py
 
@@ -83,21 +84,20 @@ def cssa(sock, n, f, a = - 1, data = -1, verbose = False):
 
 # TODO move all of sock stuff into naf or lower level?
 # TODO check that rcvd[2] _is_ the status and is != 0 for good returns
-def waitForLAM(sock, maxpolls = 1000):
+def waitForLAM(sock, maxpolls = 100):
     """
     Polls the LAM then sleeps for 10us
     """
-    cssa(sock, 24, 'testLAM')
-    exit(0)
-    # for i in range(maxpolls):
-    #         rcvd = cssa(sock, 24, 'testLAM')
-    #         if not (rcvd [-1]):
-    #             sleep(1)
-    #         else:
-    #             print(rcvd)
-    #             return rcvd[-1]
-    #     else:
-    #         raise Exception("Timeout waiting for LAM")
+    for i in range(maxpolls):
+        rsync(sock)
+        rcvd = cssa(sock, 24, 'testLAM')
+        if not (rcvd [-1]):
+            sleep(0.01)
+        else:
+            print(rcvd)
+            return rcvd[-1]
+    else:
+        raise Exception("Timeout waiting for LAM")
         
 # TODO tidy up rsync: check full LLC command/responces full format remove magic numbers
 def rsync(sock, maxTries = 10):
@@ -141,7 +141,7 @@ if __name__ == '__main__':
     #print(ccci(sendSock, verbose=True))
 
     print("look for LAM")
-    waitForLAM(sendSock, maxpolls = 2) 
+    waitForLAM(sendSock, maxpolls=1000) 
     print(cssa(sock = sendSock, n = 9, f = "readGrp1", a = 0))
 
     sendSock.close()

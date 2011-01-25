@@ -20,6 +20,7 @@ CORPackStr = 'B'*2 + 'H'*4
 # format [header component, packStr, value]
 # use a list NOT dictionary to maintain sequence, 
 # TODO look at possible sequential dictionaries? 
+# TODO Look at optimising this? header constructed first time called?
 ecp_header = [ # would be dictionary but order is important
     ['llcDestinationLsap', 'B', 0x60],
     ['llcSourceLsap', 'B', 0x60],
@@ -32,7 +33,7 @@ ecp_header = [ # would be dictionary but order is important
     # request no. should increment with calls to it possibly set as int not str?
     ['requestNumber', 'H', _request_no],
     ['crateNumber', 'H', 0x0001],
-    ['hostId', 'H', 0xCCCC], # TODO change to FFFF
+    ['hostId', 'H', 0xFFFF], # 0xCCCC <- useful for cf against C version of call
     # use os getpid[] function at top 
     # this may be tricky if ever run with multiple threads
     ['hostPid', 'I', _ourpid],                  
