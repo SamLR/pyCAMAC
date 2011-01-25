@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # encoding: utf-8
 """
 camac_cmds.py
@@ -7,15 +6,19 @@ Created by Sam Cook on 2011-01-24.
 Copyright (c) 2011. All rights reserved.
 """
 
-from socket import socket
-from ecp_header import *
+import ecp_header 
+
+from socket import *
 from naf import *
 from struct import unpack
 from time import sleep
 
 recvPackStr = ecp_header.headerPackStr + 'B'*3
+ecpFramePackStr = ecp_header.headerPackStr + 'B'*1200
 
-def recv(sock, addr, verbose=False, returnAddr=False, packStr=recvPackStr):
+# TODO re-write this as a class with the socket, addr etc being class vaiables
+
+def recv(sock, addr, verbose=False, returnAddr=False, packStr=None):
     """returns the status as received from the socket, sock at addr. 
     options: verbose - returns full packed
              returnAddr - returns the return address
@@ -25,7 +28,13 @@ def recv(sock, addr, verbose=False, returnAddr=False, packStr=recvPackStr):
     while not data:
         data, rtn_addr = sock.recvfrom(1024)
         
-    s = unpack(packStr, data)
+    s = (None,)
+    if not packStr:
+        while len(data) > 0:
+            s += unpack('B',data[:1])
+            data = data[1:]
+    else:    
+        s = unpack(packStr, data)
     res = s if verbose else (s[-3], s[-2], s[-1])
     res = (res + rtn_addr) if returnAddr else res
     return res
@@ -34,9 +43,9 @@ def cccc(sock, addr):
     """
     send CAMAC clear to socket, sock, at address addr
     """
-    msg = ecp_header.gettop(cmd = 'cmd_clr')
+    msg = ecp_header.gettop(cmd = 'cmd_clear')
     sock.sendto(msg, addr)
-    return recv(sock, addr)
+    return recv(sock, addr, ecpFramePackStr)[13]
 
 def cccz(sock, addr):
     """
@@ -46,7 +55,7 @@ def cccz(sock, addr):
     sock.sendto(msg, addr)
     return recv(sock, addr)
 
-def cccc(sock, addr):
+def ccci(sock, addr):
     """
     send CAMAC inhibit to socket, sock, at address addr
     """
@@ -54,7 +63,7 @@ def cccc(sock, addr):
     sock.sendto(msg, addr)
     return recv(sock, addr)
 
-def cssa(sock, addr, n, f, a = -1, data = -1, timeout = 1, verbose = False):
+def cssa(sock,addr, n, f, a = -1, data = -1, timeout = 1, verbose = False):
     """
     wait until a LAM signal is received
     sends to socket sock at address addr
@@ -100,6 +109,19 @@ if __name__ == '__main__':
     # without receiving 
     sendSock.settimeout(10)
     
-    cccc(sock, addr)
-    cccz(sock, addr)
-    ccci(sock, addr)
+    # rcvSock = socket(AF_INET, SOCK_DGRAM)
+    # rcvSock.bind(addr)
+    
+    # TODO read up on maintaining sockets (either open or recreate it each time)
+    print("starting, sending clear")
+    print(cccc(sendSock, addr))
+    sendSock.close()
+    sendSock = socket(AF_INET, SOCK_DGRAM)
+    print("sending init")
+    print(cccz(sendSock, addr))
+    sendSock.close()
+    sendSock = socket(AF_INET, SOCK_DGRAM)
+    print("sending inhibit")
+    print(ccci(sendSock, addr))
+    sendSock.close()
+    sendSock = socket(AF_INET, SOCK_DGRAM)
