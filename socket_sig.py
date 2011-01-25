@@ -15,11 +15,7 @@ from struct import pack, unpack
 
 
 if __name__ == '__main__':
-    
-    # TODO: string to hex for decoding return values (hexdump?)
-    # TODO: test with ADC/TDC
-    # TODO: start looking at patterns for cont receive. 
-    
+        
     # for send/receive 
     host = "192.168.0.2"
     port = 240

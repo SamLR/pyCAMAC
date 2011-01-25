@@ -86,7 +86,6 @@ def getheader():
     _inc_request_no()
     return res
     
-# TODO: find out what these COR values are actually for!
 # some seem to be for set up:
 # (eg: CMD_CLR = cccc = 0xB, cccz=0xA=cmd_init, ccci=0xC=cmd_inhibit)
 def getCOR(cmd='cmd_camac_op'): 
@@ -96,7 +95,7 @@ def getCOR(cmd='cmd_camac_op'):
     res = b''
     for entry in ecp_COR:
         if entry[0] == 'cmd':
-            entry[1] = pack('B', ecp_COR.index(cmd))
+            entry[1] = pack('B', COR_func.index(cmd))
         res += entry[1]
     return res
 

@@ -7,9 +7,9 @@ Copyright (c) 2011. All rights reserved.
 """
 
 import ecp_header 
+from naf import *
 
 from socket import *
-from naf import *
 from struct import unpack
 from time import sleep
 
@@ -18,16 +18,14 @@ ecpFramePackStr = ecp_header.headerPackStr + 'B'*1200
 
 # TODO re-write this as a class with the socket, addr etc being class vaiables
 
-def status(sock, verbose=False, packStr=None): # returnAddr=False,
-    """returns the status as received from the socket, sock at addr. 
+def status(sock, verbose=False, packStr=None): 
+    """returns the status as received from the socket, sock. 
     options: verbose - returns full packed
-             returnAddr - returns the return address
              packStr - alternate packing string (eg if header)
     """
     data = ''
     while not data:
-       data, rtn_addr = sock.recvfrom(1024)
-        # data = sock.recv(1228) #1228
+        data = sock.recv(4096) #1228
     
     s = (None,)
     if not packStr:
@@ -37,99 +35,89 @@ def status(sock, verbose=False, packStr=None): # returnAddr=False,
     else:    
         s = unpack(packStr, data)
     res = s if verbose else (s[-3], s[-2], s[-1])
-   # res = (res + rtn_addr) if returnAddr else res
     return res
 
-def cccc(sock, addr):
+def cccc(sock, verbose=False):
     """
-    send CAMAC clear to socket, sock, at address addr
+    send CAMAC clear to socket, sock
     """
     msg = ecp_header.gettop(cmd = 'cmd_clear')
     # sock.sendto(msg,addr)
     sock.send(msg)
-    return status(sock, addr)#, ecpFramePackStr)#, verbose = True)#[13]
+    return status(sock, verbose)
 
-def cccz(sock, addr):
+def cccz(sock, verbose=False):
     """
-    send CAMAC init to socket, sock, at address addr
+    send CAMAC init to socket, sock
     """
     msg = ecp_header.gettop(cmd = 'cmd_init')
     # sock.sendto(msg,addr)
     sock.send(msg)
-    return status(sock, addr)
+    return status(sock, verbose)
 
-def ccci(sock, addr):
+def ccci(sock, verbose=False):
     """
-    send CAMAC inhibit to socket, sock, at address addr
+    send CAMAC inhibit to socket, sock
     """
     msg = ecp_header.gettop(cmd = 'cmd_inhibit')
     # sock.sendto(msg,addr)
     sock.send(msg)
-    return status(sock, addr)
+    return status(sock, verbose)
 
-def cssa(sock,addr, n, f, a = -1, data = -1, timeout = 1, verbose = False):
+def cssa(sock, n, f, a = - 1, data = -1, verbose = False):
     """
     wait until a LAM signal is received
-    sends to socket sock at address addr
+    sends to socket sock
     n = slot no,
     f = camac function, 
     a is optional based on function and the subaddress of the module 
     d is optional based on function and the data to be passed
     returns the received packet as a list: n_words, dat and status
     """
-    msg = ecp_header.gettop() + naf(n, f, a = -1, data = -1)
-    sock.sendto(msg, addr)
-    sock.settimeout(timeout)
+    msg = ecp_header.gettop() + naf(n, f, a, data)
+    sock.send(msg)
     data = ''
-    return status(sock, addr, verbose)
+    return status(sock, verbose)
 
-# TODO maybe move this to a higher level?
 # TODO move all of sock stuff into naf or lower level?
-# TODO TEST THIS 
 # TODO check that rcvd[2] _is_ the status and is != 0 for good returns
-def waitForLAM(sock, addr, maxpolls = 1000):
+def waitForLAM(sock, maxpolls = 1000):
     """
     Polls the LAM then sleeps for 10us
     """
     for i in range(maxpolls):
-        rcvd = cssa(sock, addr, 24, 0, 'testLAM')
-        if not (rcvd [2]):
-            break
+        rcvd = cssa(sock, 24, 'testLAM')
+        if not (rcvd [-1]):
             sleep(0.01)
         else:
-            raise Exception("Timeout waiting for LAM")
-            return rcvd[2]
+            print(rcvd)
+            return rcvd[-1]
+    else:
+        raise Exception("Timeout waiting for LAM")
 
 if __name__ == '__main__':
-    # for send/receive 
-    host = "192.168.0.2"
-    port = 240 # as given by "our_ecc.h"
-    buf = 1024
-    addr = (host,port)
-
-    # socket for sending to CAMAC
+    
+    # socket for sending to CAMAC: network using UDP
     sendSock = socket(AF_INET, SOCK_DGRAM)
     # this is the signal timeout, ie how long to keep sending
     # without receiving 
     sendSock.settimeout(10)
     
-    # rcvSock = socket(AF_INET, SOCK_DGRAM)
-    sendSock.bind(('', 59329))
-    sendSock.connect(addr)
+    # addresses for send/receive 
+    sendAddr = ('192.168.0.2', 240) # (host, port) both defined in our_ecc
+    rcvAddr = ('', 59329)
     
+    sendSock.bind(rcvAddr) # where to receive data
+    sendSock.connect(sendAddr) # where to send from
     
-    # TODO read up on maintaining sockets (either open or recreate it each time)
-    print("starting, sending clear")
-    print(cccc(sendSock, addr))
-    # sendSock.close()
-    # sendSock = socket(AF_INET, SOCK_DGRAM)
-    print("sending init")
-    print(cccz(sendSock, addr))        # 
-        # sendSock.close()
-        # sendSock = socket(AF_INET, SOCK_DGRAM)
-    print("sending inhibit")
-    print(ccci(sendSock, addr))    # 
-        # sendSock.close()
-        # sendSock = socket(AF_INET, SOCK_DGRAM)
+    # this bit might work but it's hard to tell
+    print("starting, sending clear, init and inhibit,")
+    print(cccc(sendSock, verbose=True))
+    print(cccz(sendSock, verbose=True))
+    print(ccci(sendSock, verbose=True))
+    
+    print("look for LAM")
+    waitForLAM(sendSock, maxpolls = 2) 
+    print(cssa(sock = sendSock, n = 9, f = "readGrp1", a = 0))
     
     sendSock.close()
