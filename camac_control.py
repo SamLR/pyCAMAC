@@ -18,7 +18,7 @@ ecpFramePackStr = ecp_header.headerPackStr + 'B'*1200
 
 # TODO re-write this as a class with the socket, addr etc being class vaiables
 
-def recv(sock, addr, verbose=False, returnAddr=False, packStr=None):
+def status(sock, verbose=False, packStr=None): # returnAddr=False,
     """returns the status as received from the socket, sock at addr. 
     options: verbose - returns full packed
              returnAddr - returns the return address
@@ -26,8 +26,9 @@ def recv(sock, addr, verbose=False, returnAddr=False, packStr=None):
     """
     data = ''
     while not data:
-        data, rtn_addr = sock.recvfrom(1024)
-        
+       data, rtn_addr = sock.recvfrom(1024)
+        # data = sock.recv(1228) #1228
+    
     s = (None,)
     if not packStr:
         while len(data) > 0:
@@ -36,7 +37,7 @@ def recv(sock, addr, verbose=False, returnAddr=False, packStr=None):
     else:    
         s = unpack(packStr, data)
     res = s if verbose else (s[-3], s[-2], s[-1])
-    res = (res + rtn_addr) if returnAddr else res
+   # res = (res + rtn_addr) if returnAddr else res
     return res
 
 def cccc(sock, addr):
@@ -44,24 +45,27 @@ def cccc(sock, addr):
     send CAMAC clear to socket, sock, at address addr
     """
     msg = ecp_header.gettop(cmd = 'cmd_clear')
-    sock.sendto(msg, addr)
-    return recv(sock, addr, ecpFramePackStr)[13]
+    # sock.sendto(msg,addr)
+    sock.send(msg)
+    return status(sock, addr)#, ecpFramePackStr)#, verbose = True)#[13]
 
 def cccz(sock, addr):
     """
     send CAMAC init to socket, sock, at address addr
     """
     msg = ecp_header.gettop(cmd = 'cmd_init')
-    sock.sendto(msg, addr)
-    return recv(sock, addr)
+    # sock.sendto(msg,addr)
+    sock.send(msg)
+    return status(sock, addr)
 
 def ccci(sock, addr):
     """
     send CAMAC inhibit to socket, sock, at address addr
     """
     msg = ecp_header.gettop(cmd = 'cmd_inhibit')
-    sock.sendto(msg, addr)
-    return recv(sock, addr)
+    # sock.sendto(msg,addr)
+    sock.send(msg)
+    return status(sock, addr)
 
 def cssa(sock,addr, n, f, a = -1, data = -1, timeout = 1, verbose = False):
     """
@@ -77,7 +81,7 @@ def cssa(sock,addr, n, f, a = -1, data = -1, timeout = 1, verbose = False):
     sock.sendto(msg, addr)
     sock.settimeout(timeout)
     data = ''
-    return recv(sock, addr, verbose)
+    return status(sock, addr, verbose)
 
 # TODO maybe move this to a higher level?
 # TODO move all of sock stuff into naf or lower level?
@@ -99,7 +103,7 @@ def waitForLAM(sock, addr, maxpolls = 1000):
 if __name__ == '__main__':
     # for send/receive 
     host = "192.168.0.2"
-    port = 240
+    port = 240 # as given by "our_ecc.h"
     buf = 1024
     addr = (host,port)
 
@@ -110,18 +114,22 @@ if __name__ == '__main__':
     sendSock.settimeout(10)
     
     # rcvSock = socket(AF_INET, SOCK_DGRAM)
-    # rcvSock.bind(addr)
+    sendSock.bind(('', 59329))
+    sendSock.connect(addr)
+    
     
     # TODO read up on maintaining sockets (either open or recreate it each time)
     print("starting, sending clear")
     print(cccc(sendSock, addr))
-    sendSock.close()
-    sendSock = socket(AF_INET, SOCK_DGRAM)
+    # sendSock.close()
+    # sendSock = socket(AF_INET, SOCK_DGRAM)
     print("sending init")
-    print(cccz(sendSock, addr))
-    sendSock.close()
-    sendSock = socket(AF_INET, SOCK_DGRAM)
+    print(cccz(sendSock, addr))        # 
+        # sendSock.close()
+        # sendSock = socket(AF_INET, SOCK_DGRAM)
     print("sending inhibit")
-    print(ccci(sendSock, addr))
+    print(ccci(sendSock, addr))    # 
+        # sendSock.close()
+        # sendSock = socket(AF_INET, SOCK_DGRAM)
+    
     sendSock.close()
-    sendSock = socket(AF_INET, SOCK_DGRAM)
