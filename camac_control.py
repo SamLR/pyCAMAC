@@ -18,6 +18,8 @@ ecpFramePackStr = ecp_header.headerPackStr + 'B'*1200
 
 # TODO re-write this as a class with the socket, addr etc being class vaiables
 
+# TODO RESET: ethernet & dropbox
+
 def status(sock, verbose=False, packStr=None): 
     """returns the status as received from the socket, sock. 
     options: verbose - returns full packed
@@ -85,15 +87,36 @@ def waitForLAM(sock, maxpolls = 1000):
     """
     Polls the LAM then sleeps for 10us
     """
-    for i in range(maxpolls):
-        rcvd = cssa(sock, 24, 'testLAM')
-        if not (rcvd [-1]):
-            sleep(0.01)
+    cssa(sock, 24, 'testLAM')
+    exit(0)
+    # for i in range(maxpolls):
+    #         rcvd = cssa(sock, 24, 'testLAM')
+    #         if not (rcvd [-1]):
+    #             sleep(1)
+    #         else:
+    #             print(rcvd)
+    #             return rcvd[-1]
+    #     else:
+    #         raise Exception("Timeout waiting for LAM")
+        
+# TODO tidy up rsync: check full LLC command/responces full format remove magic numbers
+def rsync(sock, maxTries = 10):
+    """resyncs the ecc + pc"""
+    LLC_responce = 0x64 # from 'our_ecc.h'
+    LLC_command = 0x60
+    sock.send(b"\x60\x60\x67")
+    attempts = 0
+    while True:
+        s = status(sock, verbose=True)[1]# this should be destination LSAP
+        if s == LLC_responce:
+            sock.send(b'\x64\x64\xE7')
+        elif s == LLC_command:
+            return 1
+        elif attempts == maxTries:
+            print("rsync failure, too many attempts")
+            exit(1)
         else:
-            print(rcvd)
-            return rcvd[-1]
-    else:
-        raise Exception("Timeout waiting for LAM")
+            attempts += 0
 
 if __name__ == '__main__':
     
@@ -112,12 +135,13 @@ if __name__ == '__main__':
     
     # this bit might work but it's hard to tell
     print("starting, sending clear, init and inhibit,")
-    print(cccc(sendSock, verbose=True))
-    print(cccz(sendSock, verbose=True))
-    print(ccci(sendSock, verbose=True))
-    
+    rsync(sendSock)
+   # print(cccc(sendSock, verbose=True))
+  #  print(cccz(sendSock, verbose=True))
+    #print(ccci(sendSock, verbose=True))
+
     print("look for LAM")
     waitForLAM(sendSock, maxpolls = 2) 
     print(cssa(sock = sendSock, n = 9, f = "readGrp1", a = 0))
-    
+
     sendSock.close()
