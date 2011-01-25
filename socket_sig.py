@@ -20,6 +20,7 @@ if __name__ == '__main__':
     # TODO: test with ADC/TDC
     # TODO: start looking at patterns for cont receive. 
     
+    # for send/receive 
     host = "192.168.0.2"
     port = 240
     buf = 1024
@@ -27,42 +28,30 @@ if __name__ == '__main__':
     
     # socket for sending to CAMAC
     sendSock = socket(AF_INET, SOCK_DGRAM)
-    sendSock.settimeout(20)
-    # in theory this message should send the test LAM command A(0)F(8)
-    #  header(24B) + COR(6B) + naf (0fff ffnn nnna aaas)
-    clearLAM = b"\x25\x12"
-    writeReg = b"\x41\x12"
-    data = b"\x01\x00\x00\x00"
-    # msg = ecp_header.gettop() + clearLAM
-    # msg = ecp_header.getheader() + b'\x08\x01\x00\x00\x00\x00' + clearLAM
-    # msg = naf.naf(16, 'readGrp1', a = 0)
-    # msg = ecp_header.gettop() + naf.naf(16, 'clearLAM', a = 0)
-
-    msg =  ecp_header.gettop() + naf.naf(16, 'clearLAM', a = 0)
-
+    sendSock.settimeout(10)
+    
+    # message to send
+    msg =  ecp_header.gettop() + naf.naf(8, 'testStatus')#, a = 0, data =2)
+    print(msg)
     sendSock.sendto(msg, addr) 
-    # receiver    
-    # wait for a return signal
     data = ''
     while (not data):
-        data, addr = sendSock.recvfrom(buf)
-        if data:
-            print ("got back:")
-            print (data)
+        data, addr2 = sendSock.recvfrom(buf)
+        print(data)
     
+    print(data)
+    print(unpack("B"*24,data))
     
+    # sample outputs naf = 16, 0, clearLAM, 
+# (96, 96, 247, 0, 0, 0, 0, 7, 0, 0, 0, 1, 0, 0, 58, 184, 0, 0, 0, 1, 0, 3, 10, 0)
+# (96, 96, 247, 0, 0, 0, 0, 7, 0, 0, 0, 1, 0, 0, 71, 184, 0, 0, 0, 1, 0, 3, 10, 0)
+# (96, 96, 247, 0, 0, 0, 0, 7, 0, 0, 0, 1, 0, 0, 78, 184, 0, 0, 0, 1, 0, 3, 10, 0)
+# (96, 96, 247, 0, 0, 0, 0, 7, 0, 0, 0, 1, 0, 0, 93, 184, 0, 0, 0, 1, 0, 3, 10, 0)
 
-    msg = ecp_header.getheader() + b"\x80\x01\x00\x00\x00\x00" + naf.naf(16, 'readGrp1', a = 0)
+# naf = 24, testLAM, 0
+# (96, 96, 247, 0, 0, 0, 0, 7, 0, 0, 0, 1, 0, 0, 122, 184, 0, 0, 0, 1, 0, 3, 10, 0)
+# (96, 96, 247, 0, 0, 0, 0, 7, 0, 0, 0, 1, 0, 0, 144, 184, 0, 0, 0, 1, 0, 3, 10, 0)
 
-    sendSock.sendto(msg, addr) 
-    # receiver    
-    # wait for a return signal
-    data = ''
-    while (not data):
-        data, addr = sendSock.recvfrom(buf)
-        if data:
-            print ("got back:")
-            print (data)
-
-            print("done")
-    
+#  naf = 16, readGrp1, 0
+# (96, 96, 247, 0, 0, 0, 0, 7, 0, 0, 0, 1, 0, 0, 166, 184, 0, 0, 0, 1, 0, 3, 10, 0)
+# (96, 96, 247, 0, 0, 0, 0, 7, 0, 0, 0, 1, 0, 0, 180, 184, 0, 0, 0, 1, 0, 3, 10, 0)

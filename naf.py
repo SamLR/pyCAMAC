@@ -1,11 +1,10 @@
 """
-A simple set of functions for talking to CAMAC
+A simple function for sending single commands to CAMAC
 """
 
 from struct import pack
 
 def naf(n, f, a = -1, data = -1 ):
-    # TODO: add error checking for expected info eg sub address or 
     # data to write
     """
     Converts n, a, f to a 2byte string that is suitable
@@ -26,7 +25,7 @@ def naf(n, f, a = -1, data = -1 ):
     return res
     
 # dictionary format "command name":(command code, [subaddress needed?], [data needed?])
-camacFunction = { # TODO: finish adding function dict
+camacFunction = { 
     "readGrp1": (0, "subaddr"),
     "readGrp2": (1, "subaddr"),
     "readClrGrp1": (2, "subaddr"),
@@ -35,10 +34,10 @@ camacFunction = { # TODO: finish adding function dict
     "clrGrp1": (9, "subaddr"),
     "clearLAM": (10,),
     "clrGrp2": (11, "subaddr"),
-    "ovrWriteGrp1": (16, "subaddr", "data"),
-    "ovrWriteGrp2": (17, "subaddr", "data"),
-    "maskOvrWriteGrp1": (18, "subaddr", "data"), 
-    "maskOvrWriteGrp2": (19, "subaddr", "data"),
+    "overWriteGrp1": (16, "subaddr", "data"),
+    "overWriteGrp2": (17, "subaddr", "data"),
+    "maskOverWriteGrp1": (18, "subaddr", "data"), 
+    "maskOverWriteGrp2": (19, "subaddr", "data"),
     "disable": (24,),
     "increment": (25, "subaddr"),
     "enable": (26,),
