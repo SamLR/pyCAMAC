@@ -12,7 +12,7 @@ from naf import *
 
 from socket import *
 from struct import unpack
-from time import sleep
+from time import sleepÌ
 
 recvPackStr = ecp_header.headerPackStr + 'B'*3
 ecpFramePackStr = ecp_header.headerPackStr + 'B'*1200

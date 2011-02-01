@@ -50,6 +50,7 @@ if __name__ == '__main__':
     print(hex(unpack("H", naf(1,"clearLAM"))[0]))   # should be 0x2820
     print(hex(unpack("H", naf(1,"clrGrp2", 0))[0])) # should be 0x2c20
     print(hex(unpack("H", naf(1,"clrGrp2", 5))[0])) # should be 0x2c2a
-    print(hex(unpack("HHH", naf(1,"overWriteGrp2", 6, 88))[0]), end = ' ') # should be 0x442c
-    print(hex(unpack("HHH", naf(1,"overWriteGrp2", 6, 88))[1]), end = ' ') # should be 0x0058
-    print(hex(unpack("HHH", naf(1,"overWriteGrp2", 6, 88))[2]), end = ' ') # should be 0x0000
+    # the following are not supported in python2.6
+    # print(hex(unpack("HHH", naf(1,"overWriteGrp2", 6, 88))[0]), end = ' ') # should be 0x442c
+    # print(hex(unpack("HHH", naf(1,"overWriteGrp2", 6, 88))[1]), end = ' ') # should be 0x0058
+    # print(hex(unpack("HHH", naf(1,"overWriteGrp2", 6, 88))[2]), end = ' ') # should be 0x0000

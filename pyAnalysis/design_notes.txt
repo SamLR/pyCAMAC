@@ -1,0 +1,40 @@
+================================================================================
+= This files contains general design notes on the analysis software for MuSIC  =
+= run 2. The aim of this is to make a modular design that can be used for      = 
+= basic run time plotting as well as more in depth analysis                    =
+= S cook 01-02-2011                                                            =
+================================================================================
+
+AIMS:
+- for monitoring:
+    + @ start - input intensity/current scalar
+    + @ start - calibration data
+    + real time updates to ADC data plots
+    + real time removal of pedistal etc
+    + Current beam profile plot
+    + prompt for next step of procedure - stage + notes for log
+        > Hit rate & intensity (off)
+        > Hit rate & intensity (on)
+        > Pedestal
+            * Which run No. to use?
+        > Data
+            * Which run No. to use?
+        > Pedestal (check)
+            * Which run No. to use?
+        > Hit rate & intensity (on)
+        > Hit rate & intensity (off)
+        > Next position
+
+- Analysis
+    + Calculate normalised hit rate per proton
+    + Energy deposited per hit
+        > possibly PID?
+    + Energy distribution/profile
+    
+================================================================================
+
+1 Basic read in + record 
+2 Read in modes (pedestal, normal)
+3 Real time display
+4 Prompts
+5 Add start inputs (rather than hard code etc)
