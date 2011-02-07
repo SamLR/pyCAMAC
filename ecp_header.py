@@ -19,8 +19,6 @@ CORPackStr = 'B'*2 + 'H'*4
 
 # format [header component, packStr, value]
 # use a list NOT dictionary to maintain sequence, 
-# TODO look at possible sequential dictionaries? 
-# TODO Look at optimising this? header constructed first time called?
 ecp_header = [ # would be dictionary but order is important
     ['llcDestinationLsap', 'B', 0x60],
     ['llcSourceLsap', 'B', 0x60],

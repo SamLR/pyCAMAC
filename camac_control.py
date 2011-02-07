@@ -1,5 +1,4 @@
 # encoding: utf-8
-# TODO: set up CAMAC & NIM to ensure a signal
 """
 camac_cmds.py
 
@@ -16,10 +15,6 @@ from time import sleepÌ
 
 recvPackStr = ecp_header.headerPackStr + 'B'*3
 ecpFramePackStr = ecp_header.headerPackStr + 'B'*1200
-
-# TODO re-write this as a class with the socket, addr etc being class vaiables
-
-# TODO RESET: ethernet & dropbox
 
 def status(sock, verbose=False, packStr=None): 
     """returns the status as received from the socket, sock. 
@@ -82,7 +77,6 @@ def cssa(sock, n, f, a = - 1, data = -1, verbose = False):
     data = ''
     return status(sock, verbose)
 
-# TODO move all of sock stuff into naf or lower level?
 # TODO check that rcvd[2] _is_ the status and is != 0 for good returns
 def waitForLAM(sock, maxpolls = 100):
     """
@@ -98,28 +92,32 @@ def waitForLAM(sock, maxpolls = 100):
             return rcvd[-1]
     else:
         raise Exception("Timeout waiting for LAM")
-        
-# TODO tidy up rsync: check full LLC command/responces full format remove magic numbers
+
 def rsync(sock, maxTries = 10):
     """resyncs the ecc + pc"""
     LLC_responce = 0x64 # from 'our_ecc.h'
     LLC_command = 0x60
-    sock.send(b"\x60\x60\x67")
+    rsync_cmd_1 = b"\x60\x60\x67"
+    rsync_cmd_2 = b'\x64\x64\xE7'
     attempts = 0
+    cmd_2_sent = False
+    
+    sock.send(rsync_cmd_1)
     while True:
         s = status(sock, verbose=True)[1]# this should be destination LSAP
         if s == LLC_responce:
-            sock.send(b'\x64\x64\xE7')
-        elif s == LLC_command:
+            sock.send(rsync_cmd_2)
+            cmd_2_sent = True
+        elif (s == LLC_command and cmd_2_sent):
             return 1
         elif attempts == maxTries:
             print("rsync failure, too many attempts")
-            exit(1)
+            return 0
         else:
             attempts += 0
 
+
 if __name__ == '__main__':
-    
     # socket for sending to CAMAC: network using UDP
     sendSock = socket(AF_INET, SOCK_DGRAM)
     # this is the signal timeout, ie how long to keep sending
@@ -136,8 +134,8 @@ if __name__ == '__main__':
     # this bit might work but it's hard to tell
     print("starting, sending clear, init and inhibit,")
     rsync(sendSock)
-   # print(cccc(sendSock, verbose=True))
-  #  print(cccz(sendSock, verbose=True))
+    #print(cccc(sendSock, verbose=True))
+    #print(cccz(sendSock, verbose=True))
     #print(ccci(sendSock, verbose=True))
 
     print("look for LAM")

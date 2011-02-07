@@ -19,8 +19,6 @@ AIMS:
             * Which run No. to use?
         > Data
             * Which run No. to use?
-        > Pedestal (check)
-            * Which run No. to use?
         > Hit rate & intensity (on)
         > Hit rate & intensity (off)
         > Next position
@@ -38,3 +36,28 @@ AIMS:
 3 Real time display
 4 Prompts
 5 Add start inputs (rather than hard code etc)
+
+packet = <head><u16 nwords><u16 data><u16 status>
+
+================================================================================
+
+main
+    writer (file, histo)
+        + make histo a class variable?
+        calibration (file, input energies)?
+            + first version: request bin->energy pairs
+            + upgrade: root method of finding inflection point .: energy:bin relation
+            + should only be run once and values saved - file, pickle?
+            + possibly move into writer?
+            + write TH1* wrapper class that is called with a name and a list of numbers?
+    while()
+        popup/request for hit rate/intensity (on & off)
+            + look at adding into CAMAC?
+        new_file(name, start_number = 0)
+            + class variable to inc suffix
+            + optional header (position, time/date, N_events, notes? comment character?)
+        readin (file) -> pedestal
+            + use the writer as a file - only needs to implment file.write()
+        readin (file) -> event
+        popup/request hit rate/intensity on & off
+            + as above
