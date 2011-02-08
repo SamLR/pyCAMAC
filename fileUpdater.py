@@ -33,30 +33,31 @@ class FileUpdater(file):
     that each n_data corresponds to a channel"""
     file_number = 0 # class attribute
     
-    def __init__(self, file_path = 'data/r_%03i.txt', n_dat=4, header = '', **TH1F_kargs):
+    def __init__(self, file_path = 'r_%03i.txt', n_dat=4, header = '', **TH1F_kargs):
         """if file_path contains '%' then that is formatted as the file_number
         multiple uses of '%' cause an error. If included as an argument
         the header is added to the beginning of the file. Arguments for initialising 
         the histogram should be included in the dictionary TH1F_kargs"""
         self.n_ch = n_dat
-        if '%' in file_path: file_path = file_path % file_number
+        self.n_run = FileUpdater.file_number
+        if '%' in file_path: file_path = file_path % self.n_run
         file.__init__(self, file_path, "w")
         if header: file.write(self, header)
         
         self.hist = []
-        for i in range(n_ch):
-            hist_name = "run%i_ch%i" %file_number, i)
-            self.hist.append(TH1Fpy(title=hist_name, **TH1F_kargs))
+        for i in range(self.n_ch):
+            hist_name = "run%i_ch%i" % (self.n_run, i)
+            self.hist.append(TH1py.TH1(title=hist_name, **TH1F_kargs))
         
-        self.canvas = TCanvas("c%i" % FileUpdater.file_number)
+        self.canvas = TCanvas("c%i" % self.n_run)
         self.canvas.Divide(*frameFactorer(self.n_ch))
-        fileUpdater.file_number += 1
+        FileUpdater.file_number += 1
     
     def writeDat(self, dataStr, sep=None):
         """write the dataStr to file then splits it using sep to plot"""
         dat = dataStr.split(sep)
         if len(dat) != self.n_ch: 
-            raise IndexError("%s has %i entries, expecting %i" % dat, len(dat), self.n_ch)
+            raise IndexError("%s has %i entries, expecting %i" % (dat, len(dat), self.n_ch))
         for entry in dat: 
             if not entry.isdigit():
                 raise TypeError("%s is not a number." % entry)
@@ -84,4 +85,25 @@ class FileUpdater(file):
     
 
 if __name__ == '__main__':
-    main()
+    from ROOT import gRandom
+    from time import sleep
+    n_tests = 10
+    
+    # generate a set of random data points to add
+    dat = []
+    for i in range(1000):
+        s = ''
+        for j in range(4):
+            s += "%04.2f  " % abs(gRandom.Gaus())
+        dat.append(s)
+    
+    print "data generated, running tests"
+    for i in range(n_tests):
+        t = FileUpdater()
+        count = 0
+        for d in dat:
+            t.writeDat(d)
+            count += 1
+            if count % 100 == 0: t.update
+        sleep(5)
+        t.close()

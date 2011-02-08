@@ -11,111 +11,130 @@ from struct import pack   # imports 'pack' to create byte strings
 # convert the PID of this process into an 
 # unsigned short int [2 bytes]
 _ourpid = getpid()
-_request_no = 1
 
 # these are the structures of the headers 
-headerPackStr = 'B'*6 + 'H'*4 + 'I' + 'H'*4
+headerPackStr = 'B'*6 + 'H'*4 + 'I' + 'H'*3 # this would include 'I' for the pid, but unpack doesn't like mixing 'I's
 CORPackStr = 'B'*2 + 'H'*4
+rcvd_fields = ('nwords', 'data', 'qresp')
+# TODO sort out sequential dictionary
+# TODO set up so that you can refer to received fields by name
+# eg recvd.llcSourceLSAP rather than offsets
 
-# format [header component, packStr, value]
-# use a list NOT dictionary to maintain sequence, 
-ecp_header = [ # would be dictionary but order is important
-    ['llcDestinationLsap', 'B', 0x60],
-    ['llcSourceLsap', 'B', 0x60],
-    ['llcControl', 'B', 0xF7],
-    ['llcStatus', 'B', 0x00],
-    ['pseudoLlc3Control', 'B',0x03],
-    ['pseudoLlc3Status', 'B', 0x00],
+
+header_fields = ('llcDestinationLsap', 'llcSourceLsap',
+    'llcControl', 'llcStatus', 'pseudoLlc3Control',
+    'pseudoLlc3Status', 'frameType', 'requestNumber',
+    'crateNumber', 'hostId', 'hostPid', 'hostAccessId',
+    'flags', 'status',)
+
+ecp_header_defaults = ( # would be dictionary but order is important
+    ['B', 0x60],
+    ['B', 0x60],
+    ['B', 0xF7], # this changes, 
+    ['B', 0x00],
+    ['B', 0x03],
+    ['B', 0x00],
     # Frametype doesn't seem to ever be changed [defined in manual]
-    ['frameType', 'H', 0x0007],            
+    ['H', 0x0007],            
     # request no. should increment with calls to it possibly set as int not str?
-    ['requestNumber', 'H', _request_no],
-    ['crateNumber', 'H', 0x0001],
-    ['hostId', 'H', 0xFFFF], # 0xCCCC <- useful for cf against C version of call
+    ['H', 0x0001],
+    ['H', 0x0001],
+    ['H', 0xFFFF], # 0xCCCC <- useful for cf against C version of call
     # use os getpid[] function at top 
     # this may be tricky if ever run with multiple threads
-    ['hostPid', 'I', _ourpid],                  
+    ['I', _ourpid],                  
     # no idea what hostAccessId is: set in ecc_interface         
-    ['hostAccessId', 'H', 0x0001],          
-    ['flags', 'H', 0x8300],
-    ['status', 'H', 0x0047],
-    ]
+    ['H', 0x0001],          
+    ['H', 0x8300],
+    ['H', 0x0047],
+    )
 
-ecp_COR = [ # holds a standard COR command for ecc
-    ['modifier', 'B', 0x01],
-    ['cmd', 'B', 0x81],
-    ['op_lo', 'H', 0x0001],
-    ['op_hi', 'H', 0x0000],
-    ]
+# makes defaults more legible allows this to be treated as a dict but kept in order
+ecp_header_defaults = dict(zip(header_fields, ecp_header_defaults))
+    
+ecp_COR = [ # COR control, based on manual for CAMAC controlls only (naf, i, z & c)
+    ['modifier', 'B',0x01], # this changes for certain COR commands
+    ['cmd','B', 0x01], # 0x01 for main camac control only, changes otherwise
+    ['lo', 'H', 0x0001], # Lo & hi used if sending multiple instructions
+    ['hi','H', 0x0000], 
+    ] 
 
-
-COR_func = ( # enumerate as a list - access using .index('func_name')
-    'cmd_nop', 'cmd_camac_op', 'cmd_set_noint', 'cmd_set_wait',
-    'cmd_book_module', 'cmd_unbook_module',
-    'cmd_book_lam', 'cmd_unbook_lam', 'cmd_attach_lam',
-    'cmd_init', 'cmd_clear', 'cmd_inhibit', 'cmd_test_inhibit',
-    'cmd_enable_demand', 'cmd_demand_enabled', 'cmd_demand_present',
-    'cmd_set_lam_mode', 'cmd_clear_lam', 'cmd_test_lam', 'cmd_inform_lam',
-    'cmd_change_sec', 'cmd_read_booking', 'cmd_read_times',
-    'cmd_read_stats', 'cmd_read_trace',
-    'cmd_load_ecc_cmd', 'cmd_load_cor', 'cmd_read_sec',
-    'cmd_store_host_block', 'cmd_store_sys_block',
-    'cmd_chain_host_block', 'cmd_chain_sys_block',
-    'cmd_module_promiscuous', 'cmd_lam_promiscuous',
-    'cmd_alloc_response', 'cmd_enable_lam', 'cmd_clear_security',
-    'cmd_attach_cor_lam'
+COR_func = ( # enumerate as a list - access using .index('func_name')      # enum range
+    'cmd_nop', 'cmd_camac_op', 'cmd_set_noint', 'cmd_set_wait',            # 0  : 3
+    'cmd_book_module', 'cmd_unbook_module',                                # 4  : 5
+    'cmd_book_lam', 'cmd_unbook_lam', 'cmd_attach_lam',                    # 6  : 8
+    'cmd_init', 'cmd_clear', 'cmd_inhibit', 'cmd_test_inhibit',            # 9  : 12
+    'cmd_enable_demand', 'cmd_demand_enabled', 'cmd_demand_present',       # 13 : 15
+    'cmd_set_lam_mode', 'cmd_clear_lam', 'cmd_test_lam', 'cmd_inform_lam', # 16 : 19
+    'cmd_change_sec', 'cmd_read_booking', 'cmd_read_times',                # 20 : 22 
+    'cmd_read_stats', 'cmd_read_trace',                                    # 23 : 24
+    'cmd_load_ecc_cmd', 'cmd_load_cor', 'cmd_read_sec',                    # 25 : 27
+    'cmd_store_host_block', 'cmd_store_sys_block',                         # 28 : 39
+    'cmd_chain_host_block', 'cmd_chain_sys_block',                         # 30 : 31
+    'cmd_module_promiscuous', 'cmd_lam_promiscuous',                       # 32 : 33
+    'cmd_alloc_response', 'cmd_enable_lam', 'cmd_clear_security',          # 34 : 36 
+    'cmd_attach_cor_lam'                                                   # 37 :
     )
 
 def _inc_request_no():
     """
     increments the request number
     """
-    # global _request_no
     global ecp_header
-    # _request_no += 2
-    # ecp_header[7][2] = _request_no
-    ecp_header[7][2] += 1
+    ecp_header_defaults["requestNumber"][1] += 1
+
+def set_llccontrol(llcControl):
+    global ecp_header
+    ecp_header_defaults["llcControl"][1] = llcControl
     
 def getheader():
     """
     Returns the ECC header as a single string
     """
     res = b''
-    for entry in ecp_header:
+    for key in header_fields:
         # convert the value to a byte string according to it's packStr
-        res += pack(entry[1], entry[2])
+        byte_type, val = ecp_header_defaults[key]
+        res += pack(byte_type, val)
     _inc_request_no()
     return res
     
 # some seem to be for set up:
 # (eg: CMD_CLR = cccc = 0xB, cccz=0xA=cmd_init, ccci=0xC=cmd_inhibit)
-def getCOR(cmd='cmd_camac_op'): 
+def getCOR(cmd='cmd_camac_op', mod=None): 
     """
-    returns the ecc COR command
+    Returns the ecc COR command, mod changes 
+    the modifier value as given on p30 of the manual
     """
     res = b''
     for entry in ecp_COR:
         if (entry[0] == 'cmd'):
             res += pack('B',(COR_func.index(cmd) | 0x80))
+            if cmd != 'cmd_camac_op': break
+            # all other commands terminate at end of COR, i.e. here
+            # 'lo'/'hi' are for CAMAC controls
+        elif (entry[0] == 'modifier' and mod != None):
+            # explicitly check for the default or mod = '0' would be ignored
+            res += pack('B', mod)
         else:
             res += pack(entry[1], entry[2]) 
     return res
 
-def gettop(cmd='cmd_camac_op'):
+def gettop(cmd='cmd_camac_op', mod=None):
     """
     returns the combined header and COR 
     """
-    res = getheader() + getCOR(cmd)
+    res = getheader() + getCOR(cmd, mod)
     return res
     
-if __name__ == '__main__':
-    print("current top is:")
-    print(gettop())
-    print("current header is:")
-    print(getheader())
-    print("current COR is:")
-    print(getCOR())
-    print("new top is")
-    print(gettop())
-    print("done")
-    print(ecp_header[7][1])
+# if __name__ == '__main__':
+    # print("current top is:")
+    #     print(unpack(headerPackStr + CORPackStr, gettop()))
+    #    print("current header is:")    # 
+        # print(getheader())
+        # print("current COR is:")
+        # print(getCOR())
+        # print("new top is")
+        # print(gettop())
+        # print("done")
+        # print(ecp_header[7][1])

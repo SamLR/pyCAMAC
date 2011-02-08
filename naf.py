@@ -39,7 +39,7 @@ def naf(n, f, a = -1, data = -1 ):
         raise Exception("function requires a data")
         
     a = a if (a >= 0) else 0
-    data = pack('I', data) if (data >= 0) else b''
+    data = pack('H', data) if (data >= 0) else b''
     f = funcCode[0]
     
     res =  pack('H',(f << 10 | n << 5 | a << 1 | 0)) + data
@@ -47,7 +47,8 @@ def naf(n, f, a = -1, data = -1 ):
     
 if __name__ == '__main__':
     from struct import unpack
-    print(hex(unpack("H", naf(1,"clearLAM"))[0]))   # should be 0x2820
+    s = unpack("HH", naf(20,"overWriteGrp1",0,1))
+    print(hex(s[0]), hex(s[1])) 
     print(hex(unpack("H", naf(1,"clrGrp2", 0))[0])) # should be 0x2c20
     print(hex(unpack("H", naf(1,"clrGrp2", 5))[0])) # should be 0x2c2a
     # the following are not supported in python2.6
