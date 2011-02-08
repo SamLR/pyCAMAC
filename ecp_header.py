@@ -80,8 +80,11 @@ def _inc_request_no():
     """
     increments the request number
     """
-    global ecp_header
+    global ecp_header_defaults
     ecp_header_defaults["requestNumber"][1] += 1
+    if ecp_header_defaults["requestNumber"][1] >= 0xFFFF:
+        # reset otherwise it breaks
+        ecp_header_defaults["requestNumber"][1] = 0
 
 def set_llccontrol(llcControl):
     global ecp_header
@@ -127,7 +130,8 @@ def gettop(cmd='cmd_camac_op', mod=None):
     res = getheader() + getCOR(cmd, mod)
     return res
     
-# if __name__ == '__main__':
+if __name__ == '__main__':
+    print "I'm sorry, but I can't allow you to do that."
     # print("current top is:")
     #     print(unpack(headerPackStr + CORPackStr, gettop()))
     #    print("current header is:")    # 

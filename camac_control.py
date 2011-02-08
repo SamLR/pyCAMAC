@@ -83,24 +83,26 @@ def cssa(sock, n, f, a = - 1, data = -1, verbose = False):
     msg = ecp_header.gettop() + naf(n, f, a, data)
     sock.send(msg)
     data = ''
-    return status(sock, verbose, packStr = None)
+    return status(sock, verbose)
 
 # TODO check that rcvd[2] _is_ the status and is != 0 for good returns
-def waitForLAM(sock, n, maxpolls = 100):
+def waitForLAM(sock, n, maxpolls = 100, addr = 0):
     """
     Polls the LAM at n then sleeps for 10us
     """
-    msg = ecp_header.gettop(cmd='cmd_test_lam', mod=int(n))
     for i in range(maxpolls):
-        rsync(sock)
-        rcvd = sock.send(msg)
-        if not (rcvd [-1]):
-            sleep(0.01)
+        try:
+            data = cssa(sock, n, "readGrp1", addr)["data"]
+            # print datan s
+        except timeout:
+            sleep(0.1)
+            continue
         else:
-            print(rcvd)
-            return rcvd[-1]
+            if (data == 1):
+                cssa(sock, n, "overWriteGrp1", addr, data = 0)
+                return (1)
     else:
-        raise Exception("Timeout waiting for LAM")
+        raise timeout("Timeout waiting for interupt")
 # 
 # def waitForInt(sock, maxpolls = 100, ):
 #     """docstring for waitForInt"""
@@ -140,7 +142,7 @@ if __name__ == '__main__':
     sendSock = socket(AF_INET, SOCK_DGRAM)
     # this is the signal timeout, ie how long to keep sending
     # without receiving 
-    sendSock.settimeout(10)
+    sendSock.settimeout(1)
     
     # addresses for send/receive 
     sendAddr = ('192.168.0.2', 240) # (host, port) both defined in our_ecc
@@ -155,19 +157,38 @@ if __name__ == '__main__':
     print("starting, sending clear, init and inhibit,")
     rsync(sendSock)
     print("completed rsync")
-    for i in cccc(sendSock, verbose=True): print hex(i),
+    for i in cccc(sendSock, verbose=True): pass# print hex(i),
     print("\ncompleted c")
-    for i in cccz(sendSock, verbose=True): print hex(i),
+    for i in cccz(sendSock, verbose=True): pass #print hex(i),
     print("\ncompleted z")
-    for i in ccci(sendSock, verbose=True): print hex(i),
+    for i in ccci(sendSock, verbose=True): pass#print hex(i),
     print("\ncompleted i")
 
-    ret = cssa(sock = sendSock, n = 23, f = "overWriteGrp1", a = 0, data = 0)
-    for i in ret: print hex(i), 
+    # ret = cssa(sock = sendSock, n = 23, f = "overWriteGrp1", a = 0, data = 0)
+    # for i in ret: print hex(i), 
 
+    # make sure the flipflop is ready for triggering
     cssa(sock = sendSock, n = 23, f = "overWriteGrp1", a = 0, data=1)
-    # print("look for LAM")
-    # waitForLAM(sendSock, maxpolls=1000)
+    cssa(sock = sendSock, n = 23, f = "overWriteGrp1", a = 0, data=0)
+    # clear the ADC
+    cssa(sendSock, n = 21, f = "clrGrp1", a = i)
+    run = True
+    count = 0
+    while run:
+        count += 1
+        adc_dat = []
+        # print("look for LAM")
+        waitForLAM(sendSock, n= 22, maxpolls=1000)
+        # print("found")
+        for i in range (4):
+            dat = cssa(sendSock, n = 21, f = "readGrp1", a = i)["data"]
+            cssa(sendSock, n = 21, f = "clrGrp1", a = i)
+            adc_dat.append(dat)
+            if dat: 
+                run = False
+        if count % 100 == 0: print "here again"
+    print("done in %i" % count)
+    print adc_dat
     # for i in range (5): 
     #        print(cssa(sock = sendSock, n = 23, f = "overWriteGrp1", a = 1, data=1))
     #        print(cssa(sock = sendSock, n = 23, f = "overWriteGrp1", a = 1, data=0))
