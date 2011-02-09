@@ -17,7 +17,7 @@ n_subaddresses = 4
 module_location = 8
 adc = {"n":21, "addr":(0,1,2,3)}
 int_reg = {"n":22, "addr":(0)}
-out_reg = {"n":23, "subaddr":(1)}
+out_reg = {"n":23, "subaddr":(1G)}
 
 # TODO undo wrapitis that is endemic throughout this
 # restructure in a more sensible way (see notes)
