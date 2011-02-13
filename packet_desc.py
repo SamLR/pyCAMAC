@@ -8,6 +8,7 @@ Copyright (c) 2011 __MyCompanyName__. All rights reserved.
 """
 
 from os import getpid
+from seq_dict import *
 
 def _genpackstr(dic, lst):
     """Generates pack strings from the dictionaries"""
@@ -22,11 +23,7 @@ _request_number = 0x0000
 # these two dictionaries should be read in the order defined by 
 # their respective _fields lists
 # the format they follow is Key:["packstring", initial value]
-ecp_header = {}
-ecp_COR = {}
 
-ecp_header_packStr = ''
-ecp_COR_packStr = ''
 ecp_rcvd_packStr = 'HHH'
 
 ecp_header_fields = ('llcDestinationLsap', 'llcSourceLsap',
@@ -35,7 +32,7 @@ ecp_header_fields = ('llcDestinationLsap', 'llcSourceLsap',
     'crateNumber', 'hostId', 'hostPid', 'hostAccessId',
     'flags', 'status',)
 
-ecp_rcvd_fields = ('nwords', 'data', 'qresp')
+ecp_rcvd = seq_dict(dict(zip(('nwords', 'data', 'qresp'), ecp_rcvd_packStr)), ('nwords', 'data', 'qresp'))
 
 ecp_COR_fields = ('modifier', 'cmd', 'lo', 'hi')
 
@@ -56,7 +53,7 @@ _ecp_header_defaults = ( # would be dictionary but order is important
     ['H', 0x0047], # status 
     )
     
-ecp_header = dict(zip(ecp_header_fields, _ecp_header_defaults))
+ecp_header = seq_dict(dict(zip(ecp_header_fields, _ecp_header_defaults)), ecp_header_fields)
     
 _ecp_COR_defaults = (
     ['B', 0x01], # COR modifier: essentially the argument for COR command ref p30 manual
@@ -65,7 +62,7 @@ _ecp_COR_defaults = (
     ['H', 0x0000], 
     )
 
-ecp_COR = dict(zip(ecp_COR_fields, _ecp_COR_defaults))
+ecp_COR = seq_dict(dict(zip(ecp_COR_fields, _ecp_COR_defaults)), ecp_COR_fields)
 
 ecp_COR_cmds = ( # enumerate as a list - access using .index('func_name')      # enum range
     'cmd_nop', 'cmd_camac_op', 'cmd_set_noint', 'cmd_set_wait',            # 0  : 3
@@ -87,9 +84,11 @@ ecp_COR_cmds = ( # enumerate as a list - access using .index('func_name')      #
 ecp_header_packStr = _genpackstr(ecp_header, ecp_header_fields)
 ecp_COR_packStr = _genpackstr(ecp_COR, ecp_COR_fields)
 
+ecp_rcvd_packet = ecp_header + ecp_rcvd
+
 if __name__ == '__main__':
     print ecp_COR_packStr
     print ecp_header_packStr
-    print _ourpid
+    print ecp_rcvd_packet
 
 

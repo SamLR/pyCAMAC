@@ -32,7 +32,7 @@ class TH1(TH1F, object):
     other functionality will be added later"""
     
     @tracer
-    def __init__(self, data=[], title='hist', description='hist', nbins=100, xmin=0.0, xmax=100.0):
+    def __init__(self, data=[], *args):# title='hist', description='hist', nbins=100, xmin=0.0, xmax=100.0):
         """Creates a root TH1F of data (an iterable) with title, description, nbins, xmax and xmin.
         The number of bins defaults to 100, if the range values aren't set they are
         based from the data."""
@@ -40,10 +40,12 @@ class TH1(TH1F, object):
         if data: 
             xmin = float(min(data))
             xmax = float(max(data))
-            TH1F.__init__(self, title, description, nbins, xmin, xmax)
+            # args = (title, description, nbins, xmin, xmax)
+            TH1F.__init__(self, *args)#title, description, nbins, xmin, xmax)
             self.addList(data)
         else:
-            self.hist = TH1F(title, description, nbins, xmin, xmax)
+            # args = (tite, description, nbins, xmin, xmax)
+            TH1F.__init__(self, *args) #title, description, nbins, xmin, xmax)
     
     @tracer
     def addList(self, data):
@@ -58,9 +60,6 @@ class TH1(TH1F, object):
             raise TypeError ("%s is not an iterable; try wrapping it in a 'list()' call" % data)
     
 
-
-
-
 if __name__ == '__main__':
     
     dat = []
@@ -71,7 +70,9 @@ if __name__ == '__main__':
     
     dat = []
     for i in range (20):
-        dat.append(gRandom.Gaus())
+        d = str(gRandom.Gaus()) + ", "
+        a = float(d.strip()[:-1])
+        dat.append(a)
     hist.addList(dat)
     print "addList works as expected\n"
     
@@ -80,9 +81,24 @@ if __name__ == '__main__':
     except TypeError:
         print "error checking succesful"
     
-    hist.Fill(5)
+    hist.Fill(float("   5,   ".strip()[:-1]))
+    
+    from fileUpdater import string_stripper
     
     hist.Draw()
+    
+    hist2 = TH1()
+    hist2.Fill(5)
+    hist2.Fill(float("   5  ".strip()))
+    hist2.Fill(string_stripper("    ,sFSD^ 5,"))
+    hist2.Draw()
+    
+    while True:
+        try:
+            pass
+        except Exception, e:
+            del TH1
+    
     print "done"
     
 

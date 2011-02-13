@@ -6,6 +6,7 @@ seq_dict.py
 Created by Sam Cook on 2011-02-09.
 """
 
+# TODO put a more logical order, or any order (ironicly)
 class seq_dict(dict):
     """
     A sequential dictionary who's order is user specified
@@ -26,31 +27,57 @@ class seq_dict(dict):
         self.order.append(key)
         dict.__setitem__(self, key, value)
     
-    def insert(self, index, key, value = 0):
+    def insert(self, index, key, value = 0, in_situ = True):
         """
         Inserts the key:value pair(s) at index
+        if the key already exists then the 
+        previous value is replaced in situ 
         """
+        while index < 0:
+            index = len(self) - index
+            
+        count = 0
         try:
             # if there are multiple k:v pairs
             for k in key:
-                try:
-                    val = value[index]
+                try: 
+                    val = value[count]
+                    count += 1
+                    if count == len(value): count = 0
                 except TypeError:
                     val = value
                     
-                self.order.insert(index, k)
-                dict.__setitem__(self, k, val)
+                dict.__setitem__(self, k, val) 
+                
+                if k in self.order and in_situ: 
+                    # if key exists already but we want 
+                    # to maintain position: do nothing (default)
+                    continue;
+                elif k in self.order and not in_situ:
+                    # if the key already exists but we want to
+                    # move it to the new location remove it
+                    self.order.remove (k)
+                    
+                # assuming we've not continued insert at index and 
+                # increment index
+                self.order.insert(index, k)    
                 index += 1
-        except TypeError:            
+        except TypeError: 
+            # insert single item           
             self.order.insert(index, key)
             dict.__setitem__(self, key, value)
             
     def __iter__(self):
         for key in self.order:
-            yield self[key]
+            yield key
     
     def keys(self):
         return self.order
+        
+    def items(self):
+        res = []
+        for k in self.order: res.append(self[k])
+        return res
             
     def __repr__(self):
         res = '{'
@@ -66,6 +93,21 @@ class seq_dict(dict):
             raise SeqDictError("The argument has incorrect keys")
         self.order = order
         
+    def append(self, keys, values):
+        """
+        Appends the pair(s) to the dictionary
+        """
+        self.insert(-1, keys, values)
+        
+    def copy(self):
+        D = dict(zip(self.keys(), self.items()))
+        return seq_dict(D, self.order)
+    
+    def __add__(self, other):
+        res = self.copy()
+        res.append(other.keys(), other.items()) 
+        return res
+        
 class SeqDictError(TypeError, Exception):
     pass
     
@@ -76,7 +118,9 @@ if __name__ == '__main__':
     sd = seq_dict(d, o)
     sd['d'] = 9
     sd.insert(-1, 'f', 6)
+    sd.insert(-1, ('e', 'g'), (9, 10))
     sd.insert(0, ('hi','lo'))
+    
     print sd.order
     print sd
     try:
@@ -89,3 +133,11 @@ if __name__ == '__main__':
     
     for i in sd:
         print i
+        
+    sd2 = seq_dict(dict(zip((1, 2, 3), "hel")), (3, 2, 1))
+    sd3 = sd2.copy()
+    print sd3
+    print sd2
+    a = sd + sd2
+    print a['d']
+    print a
