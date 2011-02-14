@@ -18,7 +18,6 @@ from time import sleep
 # lens = {''}
 
 class CAMACError(Exception):
-    # TODO look at adding status code ref'd error msgs?
     pass
         
 
@@ -47,7 +46,7 @@ def status(sock):
         while len(data) > 0:
             byte, data = data[:1], data[1:]
             res += unpack('B', byte)
-            llcControl = res[2]
+        llcControl = res[2]
         
     ecp_header["llcControl"][1] = llcControl
     
@@ -59,7 +58,6 @@ def status_check(data):
     if data["status"][1] != 1:
         raise CAMACError("Status failure code: %i" % data["status"][1])
     elif data["qresp"][1]  != 0x8000:
-        # TODO - check if this term also includes xresp
         raise CAMACError("Qresp failure %i" % data["qresp"][1])
 
 def cccc(sock):
@@ -96,37 +94,10 @@ def cssa(sock, n, f, a = None, data = None): # waitForLAM = False, timeout = 30)
     which will not be processed until a LAM has been seen on the module
     returns the received packet as a list: n_words, dat and status
     """
-    # commands attached to lam _must_ be deferred
-    # if waitForLAM:
-    #        toparg = {"cmd":"cmd_attach_lam", "mod":n, "deferred":True} 
-    #    else:
     toparg = {"cmd":'cmd_camac_op', "mod":1}
     msg = gettop(**toparg) + naf(n, f, a, data)
     sock.send(msg)
-    data = status(sock)
-    # if waitForLAM:
-    #      if data["status"][1] != 1: raise CAMACError("Status error %i" % data["status"][1])
-    #      # dark voodoo using select()
-    #      inputs = [sock, ]
-    #      running = True
-    #      while running:
-    #          inputready, outputready, erready = select(inputs, [], [], timeout)
-    #          for s in inputready:
-    #              data = status(s)
-    #              print "in cssa", data
-    #              llc = data["llcControl"][1] ^ 0x80
-    #              msg = gettop(deferred=True, llcControl=llc, status=1)
-    #              sock.send(msg) # send an ack
-    return data
-    
-def stackem(sock, n_lam, n, f, a=None, data=None):
-    count = len(f)
-    msg = gettop("cmd_attach_lam", n_lam, count)
-    for op in range(count):
-        msg += naf(n[i], f[i], a[i], data[i])
-    sock.sock(msg)
-    print status(sock)
-    return
+    return status(sock)    
 
 def sendCOR(sock, cmd, mod):
     # TODO use this to simplify cccc etc
@@ -134,40 +105,16 @@ def sendCOR(sock, cmd, mod):
     sock.send(msg)
     return status(sock)
 
-# def waitForLAM(sock, n, addr=None, maxpolls = 100):
-#     """
-#     Polls the LAM at n then sleeps for 10us
-#     """
-#     # this actually looks for activity in the register
-#     # TODO try with LAM again..
-#     msg = gettop(cmd = 'cmd_clear_lam', mod = 22)
-#     sock.send (msg)
-#     data = status(sock)
-#     for i in range(maxpolls):
-#         msg = gettop(cmd = 'cmd_test_lam', mod = 22)
-#         sock.send (msg)
-#         
-#         data = status(sock)
-#         if data["status"][1] != 1:
-#             raise CAMACError("status: %i" % data["status"][1])
-#         if "qresp" in data:
-#             return data["qresp"]
-#     else:
-#         raise timeout("Timeout waiting for interupt")
-
-
 def waitForLAM(sock, n, addr=None, maxpolls = 100):
     """
     Polls the LAM at n then sleeps for 10us
     """
-    # this actually looks for activity in the register
-    # TODO try with LAM again..
     msg = gettop() + naf(n, f="clearLAM", a = 1)
     sock.send (msg)
     data = status(sock)
-    old_data = data#{"status":9, "qresp":0}
+    old_data = data
     for i in range(maxpolls):
-        msg = gettop() + naf(n=n, f="testLAM")#cmd = 'cmd_test_lam', mod = n)
+        msg = gettop() + naf(n=n, cmd = 'cmd_test_lam', mod = n)
         sock.send (msg)
         
         data = status(sock)
@@ -177,16 +124,6 @@ def waitForLAM(sock, n, addr=None, maxpolls = 100):
         if ("qresp" in data) and (data["qresp"] != old_data["qresp"]):
             print data
         old_data = data
-        # if data["data"][1] != 0:
-        #             print data["data"][1]
-        #             return 
-        #         continue
-        # if data["status"][1] != 1:
-        #     raise CAMACError("status: %i" % data["status"][1])
-        # if "qresp" in data:
-        #     
-        #     return data["qresp"]
-        
     else:
         raise timeout("Timeout waiting for interupt")
 
@@ -255,7 +192,7 @@ def naf(n, f, a = None, data = None ):
     res = pack('H', res)
     return res + data
 
-def main_test():
+def sockset():
     sock = socket(AF_INET, SOCK_DGRAM)
    
     sock.settimeout(5)
@@ -265,104 +202,99 @@ def main_test():
     
     sock.bind(rcvAddr) # where to receive data
     sock.connect(sendAddr) # where to send from
-    
+    return sock
+
+def main_test(sock):
     
     # this bit might work but it's hard to tell
     print("starting, sending clear, init and inhibit,")
     rsync(sock)
     print("completed rsync")
-    for i in cccc(sock): pass# print hex(i),
+    cccc(sock)
     print("\ncompleted c")
-    for i in cccz(sock): pass #print hex(i),
+    cccz(sock)
     print("\ncompleted z")
-    for i in ccci(sock): pass#print hex(i),
+    ccci(sock)
     print("\ncompleted i")
+    
+    cssa(sock, n=22, f=26, a=0)
+    # cssa(sock, n=22, f=26, a=1)
+        # cssa(sock, n=22, f=9, a=0)
+        # cssa(sock, n=22, f=11, a=0)
+    count = 0
+    while(True):
+        t = cssa(sock, n=22, f=8, a=0)
+        cssa(sock, n= 22, f='clearLAM')
+        cssa(sock = sock, n = 23, f = 16, a = 0, data=1) 
+        cssa(sock = sock, n = 23, f = 16, a = 0, data=0)
+        sleep(1)
+        if t["qresp"][1] != 0:
+            # print "wow!"
+            # print count
+            # print t
+            dat = cssa(sock, 21, "readGrp1", 8)
+            cssa (sock, 21, "clearGrp1", 8)
+            print dat["data"]
+        else:
+            count += 1
+            
+        
+    
+    # msg = gettop(flags = 0x0300, ops = 5, cmd = "cmd_attach_lam", mod = 21)
+    # msg += naf(22, 0, 0) + naf(21,0,8) + naf(21, 0, 9)
+    # sock.send(msg)
+    # print status(sock)
+    # running = True
+    # inputs = [sock, ]
+    # print '='*40 
+    # while running:
+    #     inR, outR, erR = select(inputs, [], [])
+    #     
+    #     for i in inR:
+    #         while len(i)> 0:
+    #             print unpack('B',i)
+    #             i = i[1:]
+    #         print '='*40 + '\ns'
+    return
     
     cssa(sock, n = 21, f = "clearGrp1", a = 0)
     cssa(sock = sock, n = 23, f = "overWriteGrp1", a = 0, data=1) 
-    cssa(sock = sock, n = 23, f = "overWriteGrp1", a = 0, data=0) 
+    cssa(sock = sock, n = 23, f = "overWriteGrp1", a = 0, data=0)
     print "try and read"
     old_q = 32768 
     n_run = 0
-    n_loops = 0
-    while n_run < 5:
+    n_loops = 0    
+    while True: # n_run < 5:
+        cssa(sock = sock, n = 23, f = "overWriteGrp1", a = 0, data=1) 
+        cssa(sock = sock, n = 23, f = "overWriteGrp1", a = 0, data=0)
         q = cssa(sock, n = 21, f = "testLAM")["qresp"][1]
-        if q == 0x8000: 
-            
-            # sleep(0.15) 
-            for i in range(4):
-                d = cssa(sock, n = 21, f = "readGrp1", a = i)
-                print d["data"]
-
-            n_run += 1
-            cssa(sock, n = 21, f = "clearGrp1", a=8)
-            cssa(sock, n = 21, f = "clearLAM")
-            print "="*10
-            cssa(sock = sock, n = 23, f = "overWriteGrp1", a = 0, data=1) 
-            cssa(sock = sock, n = 23, f = "overWriteGrp1", a = 0, data=0)
-        n_loops += 1
-        if n_loops == 50:
-            cssa(sock = sock, n = 23, f = "overWriteGrp1", a = 0, data=1) 
-            cssa(sock = sock, n = 23, f = "overWriteGrp1", a = 0, data=0)
         
-
-        # cssa(sock, n = 21, f = "readGrp1", a = 8,) # waitForLAM=True)
-    
-    # dat = 0
-    # n_errors = 0
-    # while dat == 0:
-    #     try:
-    #         dat = sock.recv(4098)
-    #     except timeout:
-    #         n_errors += 1
-    #         sleep(1)
-    #         if n_errors == 100:
-    #             print n_errors
-    #             sock.close()
-    #             return
-    # print dat
-    # # clear the ADC
-    # cssa(sock, n = 21, f = "clearGrp1", a = 0)
-    # cssa(sock = sock, n = 23, f = "overWriteGrp1", a = 0, data=1) # hold the trigger reset
-    # run = True
-    # count = 0
-    # print "out reg flashed"
-    # cssa(sock = sock, n = 23, f = "overWriteGrp1", a = 0, data=0)
-    # while run:
-    #     count += 1
-    #     adc_dat = []
-    #     print("look for LAM")
-    #     sendCOR(sock, cmd="cmd_clear_lam", mod=22)
-    #     waitForLAM(sock, n=22, maxpolls=1000000)
-    #     print("found")
-    #     for i in range (8, 12):
-    #         
-    #         dat = cssa(sock, n = 21, f = "readGrp1", a = i, waitForLAM=True)["data"]
-    #         cssa(sock, n = 21, f = "clearGrp1", a = i)
-    #         adc_dat.append(dat)
-    #         if dat: 
-    #             cssa(sock = sock, n = 23, f = "overWriteGrp1", a = 0, data=1)
-    #             cssa(sock = sock, n = 23, f = "overWriteGrp1", a = 0, data=0)
-    #             run = False
-    #     if count % 100 == 0: print "here again"
-    #     # run=False
-    # print("done in %i" % count)
-    # # print adc_dat
+        if q != 0: 
+            print "woot!"
+        else:
+            sleep(0.001)
+            # for i in range(4):
+            #                d = cssa(sock, n = 21, f = "readGrp1", a = i)
+            #                print d["data"]
+            #                
+            #                cssa(sock, n = 21, f = "clearGrp1", a=8)
+            #                cssa(sock, n = 21, f = "clearLAM")
+            #                print "="*10
+            #                cssa(sock = sock, n = 23, f = "overWriteGrp1", a = 0, data=1) 
+            #                cssa(sock = sock, n = 23, f = "overWriteGrp1", a = 0, data=0)
+            #                n_run += 1
+            #            else:
+            #                n_loops += 1
+            #                print n_loops
+            #                if n_loops == 50:
+            #                    cssa(sock = sock, n = 23, f = "overWriteGrp1", a = 0, data=1) 
+            #                    cssa(sock = sock, n = 23, f = "overWriteGrp1", a = 0, data=0)
+            #                    print "hello "
     
     sock.close()
 
-
 def adc_test():
-    # this uses the ADC's test feature
-    sock = socket(AF_INET, SOCK_DGRAM)
-    
-    sock.settimeout(1)
-    
-    sendAddr = ('192.168.0.2', 240) # (host, port) both defined in our_ecc
-    rcvAddr = ('', 59329)
-    
-    sock.bind(rcvAddr) # where to receive data
-    sock.connect(sendAddr) # where to send from
+    sock = sockset()
     
     print "rsync", 
     rsync(sock)
@@ -384,5 +316,9 @@ if __name__ == '__main__':
     # filter for wire shark: 
     #(ip.src == 192.186.0.1 and ip.dst == 192.168.0.2) or (ip.src == 192.168.0.2 and ip.dst == 192.186.0.1)
     # adc_test()
-
-    main_test()
+    sock = sockset()
+    try:
+        main_test(sock)
+    finally:
+        sock.close()
+        print "bye bye"

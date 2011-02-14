@@ -60,6 +60,7 @@ class FileUpdater(file):
         
         FileUpdater.canvas = TCanvas("c%i" % self.n_run)
         FileUpdater.canvas.Divide(*frameFactorer(self.n_ch))
+        self.update()
     
     def write(self, dataStr, sep=None):
         """write the dataStr to file then splits it using sep to plot"""
@@ -67,6 +68,7 @@ class FileUpdater(file):
         if len(dat) != self.n_ch: 
             raise IndexError("%s has %i entries, expecting %i" % (dat, len(dat), self.n_ch))
         dat = [string_stripper(i) for i in dat]
+        if dataStr[-1] != '\n': dataStr = dataStr+'\n'
         file.write(self, dataStr) 
         for hist in self.hist:
             filler = dat.pop(0)
@@ -95,9 +97,9 @@ class FileUpdater(file):
     
     def close(self):
         """close the file and delete the histograms"""
-        del FileUpdater.canvas
-        del self.hist
-        del self.n_ch
+        FileUpdater.canvas = 0
+        self.hist = 0
+        self.n_ch = 0
         file.close(self)
     
 def string_stripper(s):
@@ -125,7 +127,7 @@ def string_stripper(s):
 if __name__ == '__main__':
     from ROOT import gRandom
     from time import sleep
-    n_tests = 1
+    n_tests = 2
     
     # generate a set of random data points to add
     dat = []
@@ -135,21 +137,24 @@ if __name__ == '__main__':
             s += "%04.2f  " % abs(gRandom.Gaus())
         dat.append(s)
     print "data generated, running tests"
-    t = FileUpdater("test.txt")
+    
+    n_files = 2
+    for i in range (n_files):
+        t = FileUpdater("test%i.txt")
 
-    for i in range(n_tests):
-        print "0"
-        count = 0
-        for d in dat:
-            print"1"
+        for i in range(n_tests):
+            print "0"
+            count = 0
+            for d in dat:
+                print"1"
             
-            t.write(d)
-            print"2"
-            count += 1
-            if count % 100 == 0: 
-                print"update"
-                t.update
-        sleep(5)
+                t.write(d)
+                print"2"
+                count += 1
+                if count % 100 == 0: 
+                    print"update"
+                    t.update
+            sleep(5)
     print "done"
     try:
         while(True):

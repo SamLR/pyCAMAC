@@ -20,14 +20,14 @@ def _inc_request_no():
         ecp_header["requestNumber"][1] = 0
 
     
-def getheader(deferred=False, llcControl=None, status=None):
+def getheader(deferred=False, llcControl=None, status=None, flags=None):
     """
     Returns the ECC header as a single string
     """
     res = b''
     for key in ecp_header:
-        if (key == "flags") and deferred:
-            res += pack(ecp_header[key][0], 0x0300) # normally flags set to 0x8300
+        if (key == "flags") and flags:
+            res += pack(ecp_header[key][0], flags) # normally flags set to 0x8300
         elif (key == "llcControl") and llcControl:
             res += pack(ecp_header[key][0], llcControl)
         elif (key == "status") and status:
@@ -52,18 +52,20 @@ def getCOR(cmd='cmd_camac_op', mod=1, ops=0):
                 break
         elif (key == 'modifier'):
             res += pack(pack_str, mod)
+        elif (key == 'lo'):
+            val = ops if ops else val
+            res += pack(pack_str, val)
         else:
             res += pack(pack_str, val) 
     return res
 
-def gettop(cmd='cmd_camac_op', mod=1, deferred=False, llcControl=None, status=None):
+def gettop(cmd='cmd_camac_op', mod=1, flags=None, llcControl=None, status=None, ops=None):
     """
     returns the combined header and COR 
     """
-    res = getheader(deferred, llcControl, status) + getCOR(cmd, mod)
+    res = getheader(flags, llcControl, status) + getCOR(cmd, mod, ops)
     return res
 
-# TODO move printer & dictify? maybe to seq dict? 
 def printer(sdict, byteStr):
     """
     Essentially exists because unpack has issues with 'I'
