@@ -21,6 +21,9 @@ class CAMACError(Exception):
     pass
         
 
+class CAMACreadfail(Exception):
+    pass
+
 def status(sock): 
     """
     returns the status as received from the socket, sock. 
@@ -52,13 +55,16 @@ def status(sock):
     
     return res
 
-def status_check(data):
+def status_check(data, location=""):
     """
     Checks the status and qresp for the passed packed"""
-    if data["status"][1] != 1:
-        raise CAMACError("Status failure code: %i" % data["status"][1])
-    elif data["qresp"][1]  != 0x8000:
-        raise CAMACError("Qresp failure %i" % data["qresp"][1])
+    if (data["status"][1] == 90) and (data["qresp"][1] == 0):
+        # warning only (no xresp)
+        return
+    elif data["status"][1] != 1:
+        raise CAMACError("Status failure code: %i %s" % (data["status"][1], location))
+    elif (data["qresp"][1] != 0x8000):
+        raise CAMACError("Qresp failure %i %s" % (data["qresp"][1], location))
 
 def cccc(sock):
     """
@@ -159,9 +165,9 @@ camacFunction = {
     "readClrGrp1":       (2,  "subaddr"),
     "readClrGrp2":       (3,  "subaddr"),
     "testLAM":           (8,  ),
-    "clearGrp1":         (9,  "subaddr"),
+    "clearGrp1":         (9,  ),
     "clearLAM":          (10, ),
-    "clearGrp2":         (11, "subaddr"),
+    "clearGrp2":         (11, ),
     "overWriteGrp1":     (16, "subaddr", "data"),
     "overWriteGrp2":     (17, "subaddr", "data"),
     "maskOverWriteGrp1": (18, "subaddr", "data"), 
@@ -181,13 +187,13 @@ def naf(n, f, a = None, data = None ):
     # get the function info required (number and whether an address etc are needed) 
     funcCode = (f, ) if str(f).isdigit() else camacFunction[f] 
     if (("subaddr" in funcCode) and (a == None)):
-        raise Exception("function requires a subaddress")
+        raise CAMACError("function requires a subaddress")
     elif (("data" in funcCode) and (data == None)):
-        raise Exception("function requires a data")
+        raise CAMACError("function requires data")
         
     a = a if a else 0
     data = pack('H', data) if (data >= 0) else b''
-    # print funcCode[0], n, a
+    # print 'n is', n, 'a is', a, 'f is', funcCode[0], '\n'
     res = funcCode[0] <<10 | n <<5 | a << 1 | 0 
     res = pack('H', res)
     return res + data
@@ -217,28 +223,29 @@ def main_test(sock):
     ccci(sock)
     print("\ncompleted i")
     
-    cssa(sock, n=22, f=26, a=0)
+    print cssa(sock, n=22, f='clearLAM', a=0, data=0)
     # cssa(sock, n=22, f=26, a=1)
-        # cssa(sock, n=22, f=9, a=0)
-        # cssa(sock, n=22, f=11, a=0)
-    count = 0
-    while(True):
-        t = cssa(sock, n=22, f=8, a=0)
-        cssa(sock, n= 22, f='clearLAM')
-        cssa(sock = sock, n = 23, f = 16, a = 0, data=1) 
-        cssa(sock = sock, n = 23, f = 16, a = 0, data=0)
-        sleep(1)
-        if t["qresp"][1] != 0:
-            # print "wow!"
-            # print count
-            # print t
-            dat = cssa(sock, 21, "readGrp1", 8)
-            cssa (sock, 21, "clearGrp1", 8)
-            print dat["data"]
-        else:
-            count += 1
-            
-        
+    # cssa(sock, n=22, f=9, a=0)
+    # cssa(sock, n=22, f=11, a=0)
+    # count = 0
+    # while(True):
+    #   t = cssa(sock, n=22, f=8, a=0)
+    #   cssa(sock, n= 22, f='clearLAM')
+    #   break
+    #   cssa(sock = sock, n = 23, f = 16, a = 0, data=1) 
+    #   cssa(sock = sock, n = 23, f = 16, a = 0, data=0)
+    #   sleep(1)
+    #   if t["qresp"][1] != 0:
+    #       # print "wow!"
+    #       # print count
+    #       # print t
+    #       dat = cssa(sock, 21, "readGrp1", 8)
+    #       cssa (sock, 21, "clearGrp1", 8)
+    #       print dat["data"]
+    #   else:
+    #       count += 1
+    #           
+    #       
     
     # msg = gettop(flags = 0x0300, ops = 5, cmd = "cmd_attach_lam", mod = 21)
     # msg += naf(22, 0, 0) + naf(21,0,8) + naf(21, 0, 9)

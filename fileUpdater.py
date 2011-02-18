@@ -33,24 +33,33 @@ class FileUpdater(file):
     is also plotted in n_data root histograms, the assumption being
     that each n_data corresponds to a channel"""
     file_number = 0 # class attribute
-    canvas = None,
+    canvas = None
     
     def __init__(self, file_path = 'r_%03i.txt', mode="w", n_dat=4, header = '', TH1args=def_TH1, update_on=100):
-        """if file_path contains '%' then that is formatted as the file_number
+        """
+        if file_path contains '%' then that is formatted as the file_number
         multiple uses of '%' cause an error. If included as an argument
         the header is added to the beginning of the file. Arguments for initialising 
         the histogram should be included in the dictionary TH1F_kargs"""
+        
         # set instance attributes
         self.n_ch = n_dat
-        self.n_run = FileUpdater.file_number
         self.entries = 0
         self.update_on = update_on
         FileUpdater.file_number +=1
-        if '%' in file_path: file_path = file_path % self.n_run
+        if '%' in file_path: 
+            while os.path.isfile(file_path % FileUpdater.file_number): 
+                FileUpdater.file_number += 1
+            file_path = file_path % FileUpdater.file_number
+        self.n_run = FileUpdater.file_number
         
         # open the file
+        print "creating file %s" % file_path
+        print repr(file_path), repr(mode)
         file.__init__(self, file_path, mode)
-        if header: file.write(self, header)
+        if header: 
+            if header[-1] != '\n': header += '\n'
+            file.write(self, header)
         
         # initilse the histograms
         self.hist = []
@@ -62,7 +71,7 @@ class FileUpdater(file):
         FileUpdater.canvas.Divide(*frameFactorer(self.n_ch))
         self.update()
     
-    def write(self, dataStr, sep=None):
+    def write(self, dataStr, sep=None, alert = True):
         """write the dataStr to file then splits it using sep to plot"""
         dat = dataStr.split(sep)
         if len(dat) != self.n_ch: 
@@ -80,8 +89,9 @@ class FileUpdater(file):
                 for h in self.hist:
                     del h
                     del FileUpdater.canvas
-        
+        self.entries += 1
         if (self.entries % self.update_on == 0):
+            # print "%i complete, updating" % (self.entries/self.update_on)
             self.update()
     
     def update(self):
@@ -94,6 +104,14 @@ class FileUpdater(file):
             pad += 1
 
         FileUpdater.canvas.Update()
+    
+    def closeFooter(self, footer):
+        """
+        writes a footer then closes the file"""
+        if footer:
+            if footer[-1] != '\n': footer = footer + '\n'
+            file.write(self, footer)
+        self.close()
     
     def close(self):
         """close the file and delete the histograms"""
@@ -140,7 +158,7 @@ if __name__ == '__main__':
     
     n_files = 2
     for i in range (n_files):
-        t = FileUpdater("test%i.txt")
+        t = FileUpdater("test%i.txt",header='hello')
 
         for i in range(n_tests):
             print "0"
@@ -162,4 +180,4 @@ if __name__ == '__main__':
     except Exception, e:    
         pass
     finally:
-        t.close()
+        t.close("hello chicken!")
